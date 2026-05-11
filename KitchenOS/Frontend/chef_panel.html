@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>KitchenOS | Panel Chef</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body { background-color: #020617; color: #cbd5e1; font-family: sans-serif; }
+        .glass-card { background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.05); }
+        .nav-btn.active { background: rgba(249, 115, 22, 0.1); border-left: 4px solid #f97316; color: white; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+    <aside class="w-64 glass-card border-r border-white/5 flex flex-col p-6">
+        <h1 class="text-3xl font-black italic text-orange-500 tracking-tighter mb-10">K-OS</h1>
+        <nav class="space-y-3 flex-1">
+            <button onclick="showSection('dashboard')" id="btn-dashboard" class="nav-btn active w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all">
+                <i class="fa-solid fa-table-columns"></i> Dashboard
+            </button>
+            <button onclick="showSection('recetario')" id="btn-recetario" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-400">
+                <i class="fa-solid fa-book-open"></i> Recetario
+            </button>
+            <button onclick="showSection('stats')" id="btn-stats" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-400">
+                <i class="fa-solid fa-chart-line"></i> Estadísticas
+            </button>
+            <button onclick="showSection('config')" id="btn-config" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-400">
+                <i class="fa-solid fa-gear"></i> Configuración
+            </button>
+        </nav>
+        <button onclick="localStorage.clear(); window.location.href='index.html';" class="text-xs text-red-500 font-bold hover:text-white mt-auto py-4 border-t border-white/5 transition-colors">CERRAR SESIÓN</button>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto p-10 bg-slate-950/50">
+        
+        <header class="flex justify-between items-center mb-10">
+            <div>
+                <h2 id="chef-name" class="text-4xl font-black text-white italic">Chef ---</h2>
+                <p id="clock" class="text-slate-500 font-mono text-sm mt-1 font-bold tracking-widest text-orange-400">--:--:--</p>
+            </div>
+            <div class="glass-card px-6 py-3 rounded-2xl flex items-center gap-4">
+                <span class="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Temperatura</span>
+                <span id="temp-val" class="text-2xl font-black text-blue-400">0.0°C</span>
+            </div>
+        </header>
+
+        <section id="sec-dashboard" class="space-y-8 animate-fade-in">
+            <h3 class="text-xl font-bold text-white mb-4">Inventario en Tiempo Real</h3>
+            <div id="basculas-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            
+            <h3 class="text-xl font-bold text-orange-500 mt-10 mb-4">🔥 Tareas en Cocina</h3>
+            <div id="lista-tareas" class="glass-card p-6 rounded-2xl space-y-4">
+                <p class="text-sm text-slate-500 italic">Cargando tareas...</p>
+            </div>
+        </section>
+
+        <section id="sec-recetario" class="hidden space-y-8 animate-fade-in">
+            <h3 class="text-xl font-bold text-white mb-4">Gestor de Recetas</h3>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <div class="lg:col-span-2 glass-card p-8 rounded-[2rem]">
+                    <h4 class="text-sm uppercase font-bold text-slate-500 tracking-widest mb-6">Menú Actual</h4>
+                    <div id="lista-recetas" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <p class="text-sm text-slate-500 italic">Cargando recetas de la base de datos...</p>
+                    </div>
+                </div>
+
+                <div class="glass-card p-8 rounded-[2rem]">
+                    <h4 class="text-sm uppercase font-bold text-orange-500 tracking-widest mb-6">Crear Nueva</h4>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Nombre del Platillo</label>
+                            <input type="text" id="receta-nombre" placeholder="Ej. Hamburguesa Especial" class="w-full bg-slate-900 border border-white/10 rounded-lg p-3 text-sm text-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Descripción</label>
+                            <input type="text" id="receta-desc" placeholder="Breve descripción" class="w-full bg-slate-900 border border-white/10 rounded-lg p-3 text-sm text-white outline-none">
+                        </div>
+                        
+                        <div class="bg-black/30 p-4 rounded-xl border border-white/5 mt-4">
+                            <label class="block text-[10px] uppercase font-bold text-orange-400 mb-2">Añadir Ingredientes</label>
+                            <div class="flex gap-2">
+                                <select id="ingrediente-select" class="w-1/2 bg-slate-900 border border-white/10 rounded-lg p-2 text-sm text-white outline-none">
+                                    <option value="Papas">Papas</option>
+                                    <option value="Carne">Carne</option>
+                                    <option value="Tomate">Tomate</option>
+                                    <option value="Cebolla">Cebolla</option>
+                                    <option value="Pollo">Pollo</option>
+                                    <option value="Aceite">Aceite</option>
+                                </select>
+                                <input type="number" id="ingrediente-peso" step="0.05" placeholder="KG" class="w-1/3 bg-slate-900 border border-white/10 rounded-lg p-2 text-sm text-white outline-none text-center">
+                                <button onclick="agregarIngredienteLista()" class="w-1/6 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-black text-lg transition-colors">+</button>
+                            </div>
+                            <ul id="lista-ingredientes-nuevos" class="mt-3 space-y-1"></ul>
+                        </div>
+
+                        <button onclick="guardarReceta()" class="w-full bg-orange-600 hover:bg-orange-500 text-white py-3 rounded-lg text-xs font-bold transition-all mt-6 shadow-lg">AGREGAR AL MENÚ</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="sec-stats" class="hidden space-y-8 animate-fade-in">
+            <h3 class="text-xl font-bold text-white mb-4">Historial de Consumo</h3>
+            <div class="glass-card p-8 rounded-[2rem] h-[400px]">
+                <canvas id="myChart"></canvas>
+            </div>
+        </section>
+
+        <section id="sec-config" class="hidden space-y-8 animate-fade-in">
+            <h3 class="text-xl font-bold text-white mb-4">Configuración de Básculas</h3>
+            <div id="config-form-list" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <p class="text-sm text-slate-500 italic">Cargando sensores...</p>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        const API_URL = "http://localhost:8000";
+        const token = localStorage.getItem('access_token');
+        const username = localStorage.getItem('username');
+        let chartInstance = null;
+        
+        // Variable para guardar los ingredientes de la nueva receta
+        let recetaTemporal = {};
+
+        if(!token) window.location.href = 'index.html';
+        document.getElementById('chef-name').innerText = `Chef ${username}`;
+
+        // RELOJ EN TIEMPO REAL
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString('es-MX', { hour12: true });
+        }, 1000);
+
+        // NAVEGACIÓN
+        function showSection(name) {
+            document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active', 'text-white'));
+            
+            document.getElementById(`sec-${name}`).classList.remove('hidden');
+            document.getElementById(`btn-${name}`).classList.add('active', 'text-white');
+
+            if(name === 'config') cargarConfiguracion();
+            if(name === 'stats') cargarGrafica();
+            if(name === 'recetario') cargarRecetas(); 
+        }
+
+        // --- SISTEMA VISUAL DE INGREDIENTES PARA EL CHEF ---
+        function agregarIngredienteLista() {
+            const ing = document.getElementById('ingrediente-select').value;
+            const peso = parseFloat(document.getElementById('ingrediente-peso').value);
+            
+            if(isNaN(peso) || peso <= 0) {
+                alert("Por favor ingresa un peso válido mayor a 0.");
+                return;
+            }
+            
+            recetaTemporal[ing] = peso;
+            dibujarListaIngredientes();
+            document.getElementById('ingrediente-peso').value = ''; // Limpiar input
+        }
+
+        function dibujarListaIngredientes() {
+            const ul = document.getElementById('lista-ingredientes-nuevos');
+            ul.innerHTML = Object.entries(recetaTemporal).map(([ing, peso]) => `
+                <li class="flex justify-between items-center text-xs bg-slate-800 p-2 rounded-lg border border-white/5">
+                    <span class="text-white font-bold">${ing}</span>
+                    <div class="flex items-center gap-3">
+                        <span class="text-orange-400">${peso} KG</span>
+                        <button onclick="quitarIngrediente('${ing}')" class="text-red-500 hover:text-red-400 font-bold text-sm">✖</button>
+                    </div>
+                </li>
+            `).join('');
+        }
+
+        function quitarIngrediente(ing) {
+            delete recetaTemporal[ing];
+            dibujarListaIngredientes();
+        }
+        // --------------------------------------------------
+
+        // DASHBOARD REAL-TIME
+        async function updateDashboard() {
+            try {
+                const res = await fetch(`${API_URL}/api/dashboard/mapeado`, { headers: { 'Authorization': `Bearer ${token}` } });
+                if(!res.ok) return;
+                const data = await res.json();
+                
+                document.getElementById('temp-val').innerText = `${data.temperatura.toFixed(1)}°C`;
+                document.getElementById('basculas-grid').innerHTML = data.inventario.map(item => `
+                    <div class="glass-card p-6 rounded-2xl">
+                        <div class="flex justify-between items-end mb-4">
+                            <span class="text-sm font-bold text-slate-400 uppercase tracking-widest">${item.nombre}</span>
+                            <span class="text-2xl font-black text-white">${item.peso.toFixed(2)} <span class="text-sm text-slate-500">KG</span></span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                            <div class="bg-orange-500 h-full transition-all duration-500" style="width: ${Math.min((item.peso / 2) * 100, 100)}%"></div>
+                        </div>
+                    </div>
+                `).join('');
+
+                const resT = await fetch(`${API_URL}/api/tareas/activas`, { headers: { 'Authorization': `Bearer ${token}` } });
+                if(resT.ok) {
+                    const tareas = await resT.json();
+                    document.getElementById('lista-tareas').innerHTML = tareas.length ? tareas.map(t => `
+                        <div class="bg-black/40 p-4 rounded-xl border-l-4 ${t.estado === 'EN_PROCESO' ? 'border-orange-500' : 'border-blue-500'}">
+                            <p class="text-sm font-bold text-white">${t.receta}</p>
+                            <p class="text-[10px] text-slate-500 uppercase mt-1">Responsable: ${t.cocinero} | Estado: ${t.estado}</p>
+                        </div>
+                    `).join('') : '<p class="text-sm text-slate-500 italic">No hay órdenes en proceso en este momento.</p>';
+                }
+            } catch (e) { console.error("Error Dashboard:", e); }
+        }
+
+        // CARGAR RECETAS
+        async function cargarRecetas() {
+            try {
+                const res = await fetch(`${API_URL}/api/recetas`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const contenedor = document.getElementById('lista-recetas');
+                
+                if (!res.ok) throw new Error("Error del servidor");
+                const recetas = await res.json();
+                
+                if (recetas.length === 0) {
+                    contenedor.innerHTML = '<p class="text-sm text-slate-500 italic">No hay recetas guardadas.</p>';
+                    return;
+                }
+
+                contenedor.innerHTML = recetas.map(r => {
+                    let ingredientesObj = typeof r.ingredientes_json === 'string' ? JSON.parse(r.ingredientes_json) : (r.ingredientes_json || {});
+                    return `
+                    <div class="bg-black/40 p-5 rounded-2xl border border-white/5 shadow-lg">
+                        <h5 class="text-lg font-black text-white italic mb-1">${r.nombre}</h5>
+                        <p class="text-xs text-slate-400 mb-4">${r.descripcion}</p>
+                        <div class="bg-slate-900/50 p-3 rounded-lg border border-white/5">
+                            <p class="text-[9px] uppercase font-bold text-orange-500 mb-2">Ingredientes Requeridos:</p>
+                            <ul class="space-y-1">
+                                ${Object.entries(ingredientesObj).map(([ing, cant]) => `
+                                    <li class="text-xs text-slate-300 flex justify-between">
+                                        <span>${ing}</span> 
+                                        <span class="font-bold text-white">${parseFloat(cant).toFixed(3)} KG</span>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                    `;
+                }).join('');
+            } catch (e) { 
+                document.getElementById('lista-recetas').innerHTML = `<p class="text-red-500 text-sm font-bold">❌ Error: No se pudo conectar con la base de datos.</p>`;
+            }
+        }
+
+        // GUARDAR RECETA (AHORA USA EL OBJETO VISUAL)
+        async function guardarReceta() {
+            const nombre = document.getElementById('receta-nombre').value;
+            const desc = document.getElementById('receta-desc').value;
+
+            if (!nombre) { alert("Por favor ponle un nombre a la receta."); return; }
+            if (Object.keys(recetaTemporal).length === 0) { alert("Debes añadir al menos 1 ingrediente a la receta."); return; }
+
+            try {
+                const res = await fetch(`${API_URL}/api/recetas`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ nombre: nombre, descripcion: desc, ingredientes_json: recetaTemporal })
+                });
+
+                if(res.ok) {
+                    alert('✅ Platillo agregado al menú exitosamente.');
+                    document.getElementById('receta-nombre').value = '';
+                    document.getElementById('receta-desc').value = '';
+                    recetaTemporal = {}; // Limpiamos la memoria
+                    dibujarListaIngredientes(); // Limpiamos la UI
+                    cargarRecetas(); // Recargamos la lista
+                } else {
+                    alert('Error al guardar la receta en la base de datos.');
+                }
+            } catch (e) { alert("Error de conexión con el servidor."); }
+        }
+
+        // CARGAR CONFIGURACIÓN DE BÁSCULAS
+        async function cargarConfiguracion() {
+            try {
+                const res = await fetch(`${API_URL}/api/inventario/config`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const contenedor = document.getElementById('config-form-list');
+
+                if (!res.ok) throw new Error("Error al cargar config");
+                const config = await res.json();
+
+                contenedor.innerHTML = config.map(item => `
+                    <div class="glass-card p-6 rounded-2xl shadow-lg">
+                        <span class="text-orange-500 font-black text-lg block mb-4">${item.id_bascula.toUpperCase()}</span>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Nombre de Producto</label>
+                                <input type="text" id="name-${item.id_bascula}" value="${item.nombre_producto}" class="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-white outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Stock Mínimo Alerta (KG)</label>
+                                <input type="number" step="0.1" id="min-${item.id_bascula}" value="${item.stock_minimo}" class="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-white outline-none">
+                            </div>
+                            <button onclick="guardarConfig('${item.id_bascula}')" class="w-full bg-orange-600 hover:bg-orange-500 text-white py-2 rounded-lg text-xs font-bold transition-all shadow-md">ACTUALIZAR</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) { 
+                document.getElementById('config-form-list').innerHTML = `<p class="text-red-500 text-sm font-bold">❌ Error: No se pudo conectar con la base de datos.</p>`;
+            }
+        }
+
+        async function guardarConfig(id) {
+            const prod = document.getElementById(`name-${id}`).value;
+            const min = document.getElementById(`min-${id}`).value;
+            try {
+                const res = await fetch(`${API_URL}/api/inventario/config/${id}`, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ nombre_producto: prod, stock_minimo: parseFloat(min) })
+                });
+                if(res.ok) alert(`✅ Báscula actualizada correctamente.`);
+            } catch (e) { alert("Error de conexión."); }
+        }
+
+        // GRÁFICA DE ESTADÍSTICAS
+        async function cargarGrafica() {
+            try {
+                const res = await fetch(`${API_URL}/api/estadisticas/avanzadas`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const data = await res.json();
+                const ctx = document.getElementById('myChart').getContext('2d');
+                
+                if(chartInstance) chartInstance.destroy();
+                
+                chartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels.length ? data.labels : ['Sin datos'],
+                        datasets: [{
+                            label: 'Peso en B1 (KG)',
+                            data: data.data.length ? data.data : [0],
+                            borderColor: '#f97316',
+                            backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { display: false } } }
+                });
+            } catch (e) { console.error("Error gráfica", e); }
+        }
+
+        // Iniciar Dashboard
+        updateDashboard();
+        setInterval(updateDashboard, 3000);
+    </script>
+</body>
+</html>

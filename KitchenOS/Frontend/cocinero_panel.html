@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>KitchenOS | Estación de Cocina</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <style>
+        body { background-color: #020617; color: #cbd5e1; font-family: sans-serif; }
+        .glass-card { background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255,255,255,0.05); }
+    </style>
+</head>
+<body class="p-8 h-screen flex flex-col">
+    <header class="flex justify-between items-end mb-8 border-b border-white/5 pb-4">
+        <div>
+            <h1 class="text-3xl font-black italic text-orange-500 tracking-tighter">K-OS <span class="text-white text-xl font-bold not-italic">Estación de Cocina</span></h1>
+            <h2 id="welcome-msg" class="text-lg font-bold text-slate-400 mt-2">Cocinero: ---</h2>
+        </div>
+        <button onclick="cerrarSesion()" class="text-xs font-bold text-red-500 hover:text-white border border-red-500/30 px-4 py-2 rounded-lg hover:bg-red-500 transition-all">CERRAR SESIÓN</button>
+    </header>
+
+    <main class="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1">
+        <div class="glass-card p-8 rounded-[2rem] border border-orange-500/30 relative overflow-hidden shadow-lg">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-600 to-yellow-400"></div>
+            <h3 class="text-sm font-black text-orange-500 mb-6 uppercase tracking-widest flex items-center gap-2">
+                <span class="animate-pulse">🔔</span> Propuestas Disponibles
+            </h3>
+            <div id="panel-propuestas" class="space-y-4">
+                <p class="text-xs text-slate-500 italic">Buscando propuestas de la IA...</p>
+            </div>
+        </div>
+
+        <div class="glass-card p-8 rounded-[2rem]">
+            <h3 class="text-sm font-black text-blue-400 mb-6 uppercase tracking-widest flex items-center gap-2">
+                👨‍🍳 Mi Tablero de Trabajo
+            </h3>
+            <div id="panel-mi-tarea" class="space-y-4">
+                <p class="text-xs text-slate-500 italic">Sincronizando datos de tu estación...</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const API_URL = "http://localhost:8000";
+        // Recuperamos los datos que guardamos al iniciar sesión
+        const userId = localStorage.getItem('user_id'); 
+        const token = localStorage.getItem('access_token');
+        const username = localStorage.getItem('username');
+
+        if(!token) window.location.href = 'index.html';
+        document.getElementById('welcome-msg').innerText = `Cocinero: ${username}`;
+
+        async function cargarTableros() {
+            try {
+                // 1. Cargar propuestas de la IA
+                const resP = await fetch(`${API_URL}/api/tareas/propuestas`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const propuestas = await resP.json();
+                
+                const contP = document.getElementById('panel-propuestas');
+                if(propuestas.length === 0) {
+                    contP.innerHTML = `<p class="text-xs text-slate-500 italic">La IA está analizando el inventario. No hay recetas viables aún.</p>`;
+                } else {
+                    contP.innerHTML = propuestas.map(p => `
+                        <div class="bg-black/50 p-5 rounded-xl border border-white/5 flex justify-between items-center animate__animated animate__fadeIn">
+                            <div>
+                                <p class="text-lg font-black text-white">${p.receta_nombre}</p>
+                                <p class="text-[9px] text-orange-400 uppercase tracking-widest mt-1">¡Insumos listos en bodega!</p>
+                            </div>
+                            <button onclick="aceptarTarea(${p.id})" class="bg-orange-600 hover:bg-orange-500 text-white font-black text-[10px] px-5 py-3 rounded-xl transition-transform active:scale-95 shadow-lg shadow-orange-600/20">
+                                ACEPTAR ORDEN
+                            </button>
+                        </div>
+                    `).join('');
+                }
+
+                // 2. Cargar la tarea asignada a este cocinero específico
+                const resT = await fetch(`${API_URL}/api/tareas/activas`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const activas = await resT.json();
+                // Filtramos para ver solo la tarea que me pertenece
+                const miTarea = activas.find(t => t.cocinero === username);
+
+                const contT = document.getElementById('panel-mi-tarea');
+                if(miTarea) {
+                    contT.innerHTML = `
+                        <div class="bg-blue-900/20 p-6 rounded-2xl border border-blue-500/30 animate__animated animate__pulse">
+                            <p class="text-[10px] text-blue-300 font-bold uppercase tracking-widest mb-2">Orden en curso</p>
+                            <p class="text-3xl font-black text-white mb-4">${miTarea.receta}</p>
+                            <span class="bg-blue-500/20 text-blue-300 text-[10px] px-3 py-1 rounded-full font-bold uppercase border border-blue-500/30">
+                                ESTADO: ${miTarea.estado}
+                            </span>
+                        </div>
+                    `;
+                } else {
+                    contT.innerHTML = `<p class="text-xs text-slate-500 italic">No tienes órdenes activas. ¡Acepta una receta del panel izquierdo para empezar!</p>`;
+                }
+            } catch (e) {
+                console.error("Sincronizando...", e);
+            }
+        }
+
+        async function aceptarTarea(idTarea) {
+            if(!userId) {
+                alert("Error crítico: ID de usuario no encontrado. Cierra sesión e ingresa de nuevo.");
+                return;
+            }
+            
+            try {
+                // Disparamos el PUT al backend enviando nuestro ID
+                const res = await fetch(`${API_URL}/api/tareas/aceptar/${idTarea}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ empleado_id: parseInt(userId) })
+                });
+
+                if(res.ok) {
+                    cargarTableros(); // Actualiza la pantalla de inmediato
+                } else {
+                    const err = await res.json();
+                    alert("Alerta K-OS: " + (err.detail || "Error al aceptar la tarea"));
+                }
+            } catch (e) {
+                alert("Error de conexión.");
+            }
+        }
+
+        function cerrarSesion() {
+            localStorage.clear();
+            window.location.href = 'index.html';
+        }
+
+        // Actualizamos las pantallas cada 3 segundos
+        cargarTableros();
+        setInterval(cargarTableros, 3000);
+    </script>
+</body>
+</html>
